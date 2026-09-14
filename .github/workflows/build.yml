@@ -1,0 +1,35 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout kodas
+        uses: actions/checkout@v4
+
+      - name: Kompiliavimas
+        run: |
+          xcodebuild \
+            -scheme Madeira \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: IPA pakavimas
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          cp -r "$APP_PATH" Payload/
+          zip -r Madeira.ipa Payload
+
+      - name: Įkelti IPA failą
+        uses: actions/upload-artifact@v4
+        with:
+          name: Madeira-ipa
+          path: Madeira.ipa
