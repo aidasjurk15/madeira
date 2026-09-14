@@ -11,6 +11,21 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          lfs: true
+
+      - name: Pasiruošimas ir resursų sutvarkymas
+        run: |
+          # Paleidžiami galimi repozitorijos paruošimo skriptai, jei jie egzistuoja
+          for script in setup.sh prepare.sh bootstrap.sh download.sh; do
+            if [ -f "$script" ]; then
+              echo "Vykdomas $script..."
+              chmod +x "$script"
+              ./"$script" || true
+            fi
+          done
+
+          # Sukuriamas trūkstamas resursų katalogas, kurio reikalauja Xcode
+          mkdir -p app/Madeira/x86_64-vcruntime
 
       - name: Kompiliavimas
         run: |
@@ -34,7 +49,7 @@ jobs:
           xcodebuild \
             $TARGET_FLAG \
             -scheme "$SCHEME" \
-            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -configuration Release \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
