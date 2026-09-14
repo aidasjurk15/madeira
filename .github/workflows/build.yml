@@ -9,11 +9,31 @@ jobs:
     steps:
       - name: Checkout kodas
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Kompiliavimas
         run: |
+          WORKSPACE=$(find . -name "*.xcworkspace" -not -path "*/.*" | head -n 1)
+          PROJECT=$(find . -name "*.xcodeproj" -not -path "*/.*" | head -n 1)
+
+          if [ -n "$WORKSPACE" ]; then
+            TARGET_FLAG="-workspace $WORKSPACE"
+          elif [ -n "$PROJECT" ]; then
+            TARGET_FLAG="-project $PROJECT"
+          else
+            echo "Klaida: nerastas joks Xcode projektas ar workspace failas."
+            exit 1
+          fi
+
+          SCHEME=$(xcodebuild $TARGET_FLAG -list -json | python3 -c "import sys, json; data=json.load(sys.stdin); schemes=data.get('project', data.get('workspace', {})).get('schemes', []); print(schemes[0] if schemes else 'Madeira')")
+
+          echo "Rastas taikinys: $TARGET_FLAG"
+          echo "Pasirinkta schema: $SCHEME"
+
           xcodebuild \
-            -scheme Madeira \
+            $TARGET_FLAG \
+            -scheme "$SCHEME" \
             -sdk iphoneos \
             -configuration Release \
             -derivedDataPath build \
@@ -25,6 +45,10 @@ jobs:
         run: |
           mkdir -p Payload
           APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Klaida: .app failas nerastas."
+            exit 1
+          fi
           cp -r "$APP_PATH" Payload/
           zip -r Madeira.ipa Payload
 
